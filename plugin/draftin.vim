@@ -15,7 +15,6 @@ endfunction
 
 function! s:ReadDocMetadata()
     let l:mdfilename = s:MetadataFilename() 
-    echo "Looking for file " . l:mdfilename
     if (filereadable(l:mdfilename))
         execute 'source' l:mdfilename
     endif
@@ -23,11 +22,9 @@ endfunction
 
 function! s:WriteDocMetadata(metadata)
     let l:mdfilename = s:MetadataFilename() 
-    echo "Looking for file to write " . l:mdfilename
     let l:mdlines = []
     let l:relevantKeys = ['id']
     for key in relevantKeys 
-        echo "Writing metadata field " . key
         call add(l:mdlines, "let g:draftin_" . key . " = '" . a:metadata[key] . "'")
     endfor
     call writefile(l:mdlines, l:mdfilename)
@@ -72,19 +69,18 @@ function! s:Draft()
         let l:curlCmd .= s:draftin_doc_update_endpoint . g:draftin_id . ".json"
     endif
 
-    echo "Executing " . l:curlCmd
-
     let l:rawres = system(l:curlCmd)
     if (l:creating)
-        echo l:rawres
         let l:res = ParseJSON(l:rawres)
         call s:WriteDocMetadata(l:res)
+        " Read it back so the stored variables can be used
+        call s:ReadDocMetadata()
     endif
 
     if (l:creating)
-        echo "Document " . l:name . " created and uploaded"
+        echo "Document " . l:name . " created and uploaded at https://draftin.com/documents/" . g:draftin_id
     else
-        echo "Document " . l:name . " updated"
+        echo "Document " . l:name . " updated, see https://draftin.com/documents/" . g:draftin_id
     endif
 
 endfunction
