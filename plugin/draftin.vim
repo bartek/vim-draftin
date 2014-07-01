@@ -42,8 +42,11 @@ function! s:Draft()
         return
     endif
 
-    " Make sure the file is saved
-    update
+    if (!b:autodraftin)
+        let b:notautodraftin = 1
+        " Make sure the file is saved
+        update
+    endif
 
     let l:curl_method = "POST"
 
@@ -85,5 +88,33 @@ function! s:Draft()
     else
         echo "Document " . l:name . " updated, see https://draftin.com/documents/" . b:draftin_id
     endif
-
 endfunction
+
+function! s:AutoDraft()
+    if (b:notautodraftin)
+        let b:notautodraftin = 0
+        return
+    endif
+    let b:autodraftin = 1
+    call s:Draft()
+    let b:autodraftin = 0
+endfunction
+
+function! s:AddDraftinSaveHandlers()
+    autocmd BufWritePost <buffer> call s:AutoDraft()
+endfunction
+
+function! s:SetupDraftinBuffer()
+    call s:ReadDocMetadata()
+    if exists("b:draftin_id")
+        call s:AddDraftinSaveHandlers()    
+        let b:autodraftin = 0
+        let b:notautodraftin = 0
+    endif
+endfunction
+
+augroup draftin
+    autocmd!
+
+    autocmd  BufEnter  *  :call s:SetupDraftinBuffer()
+augroup END
