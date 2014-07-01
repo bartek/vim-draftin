@@ -25,7 +25,7 @@ function! s:WriteDocMetadata(metadata)
     let l:mdlines = []
     let l:relevantKeys = ['id']
     for key in relevantKeys 
-        call add(l:mdlines, "let g:draftin_" . key . " = '" . a:metadata[key] . "'")
+        call add(l:mdlines, "let b:draftin_" . key . " = '" . a:metadata[key] . "'")
     endfor
     call writefile(l:mdlines, l:mdfilename)
 endfunction
@@ -42,6 +42,9 @@ function! s:Draft()
         return
     endif
 
+    " Make sure the file is saved
+    update
+
     let l:curl_method = "POST"
 
     let l:name = getline(1)
@@ -52,7 +55,7 @@ function! s:Draft()
 
     call s:ReadDocMetadata()
     let l:creating = 1
-    if exists("g:draftin_id")
+    if exists("b:draftin_id")
         let l:creating = 0
         let l:curl_method = "PUT"
     endif
@@ -66,7 +69,7 @@ function! s:Draft()
     if (l:creating)
         let l:curlCmd .= s:draftin_doc_create_endpoint
     else
-        let l:curlCmd .= s:draftin_doc_update_endpoint . g:draftin_id . ".json"
+        let l:curlCmd .= s:draftin_doc_update_endpoint . b:draftin_id . ".json"
     endif
 
     let l:rawres = system(l:curlCmd)
@@ -78,9 +81,9 @@ function! s:Draft()
     endif
 
     if (l:creating)
-        echo "Document " . l:name . " created and uploaded at https://draftin.com/documents/" . g:draftin_id
+        echo "Document " . l:name . " created and uploaded at https://draftin.com/documents/" . b:draftin_id
     else
-        echo "Document " . l:name . " updated, see https://draftin.com/documents/" . g:draftin_id
+        echo "Document " . l:name . " updated, see https://draftin.com/documents/" . b:draftin_id
     endif
 
 endfunction
