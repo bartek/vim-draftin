@@ -10,6 +10,11 @@ When creating/uploading a document the first time, a JSON response is received.
 To parse this and extract the id,
 [vim-scripts/ParseJSON](https://github.com/vim-scripts/ParseJSON) is used. 
 
+If the text/content contains certain characters (e.g. if you write about code), they 
+may have to be escaped in JSON.
+[vim-scripts/jsoncodecs.vim](https://github.com/vim-scripts/jsoncodecs.vim)
+handles this.
+
 Installation
 ----
 
