@@ -32,7 +32,7 @@ endfunction
 function! s:ReadDocMetadata()
     let l:mdfilename = s:MetadataFilename() 
     if (filereadable(l:mdfilename))
-        execute 'source' l:mdfilename
+        execute "source"  fnameescape(l:mdfilename)
     endif
 endfunction
 
