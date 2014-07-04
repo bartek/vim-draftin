@@ -3,6 +3,18 @@ vim-draftin
 
 Work in progress plugin for the excellent writing tool [https://draftin.com](Draft)
 
+Dependencies
+----
+
+When creating/uploading a document the first time, a JSON response is received.
+To parse this and extract the id,
+[vim-scripts/ParseJSON](https://github.com/vim-scripts/ParseJSON) is used. 
+
+If the text/content contains certain characters (e.g. if you write about code), they 
+may have to be escaped in JSON.
+[vim-scripts/jsoncodecs.vim](https://github.com/vim-scripts/jsoncodecs.vim)
+handles this.
+
 Installation
 ----
 
@@ -18,7 +30,7 @@ Configuration
 ----
 
 You'll need to set your [https://draftin.com](Draft) credentials to be able to
-POST new documents. Within .vimrc:
+POST new documents. Within .vimrc (or in a file sourced from .vimrc):
 
     let g:draftin_auth = "username:password"
 
@@ -26,8 +38,3 @@ Usage
 ----
 
 * `:Draft` will upload the document to Draft, echo'ing back the url.
-
-TODO
----
-
-* :Draft command should update a document if already exists.
