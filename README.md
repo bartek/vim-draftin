@@ -15,6 +15,9 @@ may have to be escaped in JSON.
 [vim-scripts/jsoncodecs.vim](https://github.com/vim-scripts/jsoncodecs.vim)
 handles this.
 
+vim-draftin uses the program curl to send messages to draftin.com. How to install it
+will depend on your system.
+
 Installation
 ----
 

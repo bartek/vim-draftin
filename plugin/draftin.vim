@@ -16,9 +16,15 @@ function! s:CheckDependencies()
         return 0
     endif
 
-    if !exists('g:loaded_parsejson') 
+    if !exists("g:loaded_parsejson") 
         echo "vim-draftin depends on ParseJSON for reply parsing"
         echo "https://github.com/vim-scripts/ParseJSON"
+        return 0
+    endif
+
+    if !executable("curl")
+        echo "vim-draftin depends on curl to send messages to draftin.com, but"
+        echo "it appear to not be installed."
         return 0
     endif
 
