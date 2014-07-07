@@ -9,6 +9,16 @@ let s:draftin_doc_update_endpoint = "https://draftin.com/api/v1/documents/"
 
 command -nargs=? Draft call <SID>Draft(<f-args>)
 
+function! s:CheckDraftRunnable()
+    if !g:draftin_enabled
+        echo "vim-draftin has been disabled, look for ''g:draftin_enabled'' in your"
+        echo "vim config files."
+        return 0
+    endif
+
+    return s:CheckDependencies()
+endfunction
+
 function! s:CheckDependencies()
     if !exists("g:loaded_jsoncodecs")
         echo "vim-draftin depends on jsoncodecs.vim for escaping"
@@ -60,11 +70,7 @@ function! s:Draft(...)
         return
     endif
 
-    if !g:draftin_enabled
-        return
-    endif
-
-    if !s:CheckDependencies()
+    if !s:CheckDraftRunnable()
         return
     endif
 
