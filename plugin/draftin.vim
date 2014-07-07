@@ -68,6 +68,7 @@ function! s:Draft(...)
 
     if !b:autodraftin
         let b:notautodraftin = 1
+        let b:modified = &l:modified
         " Make sure the file is saved
         update
     endif
@@ -88,12 +89,28 @@ function! s:Draft(...)
     call s:ReadDocMetadata()
     let l:creating = 1
     if exists("b:draftin_id")
+        if !b:modified
+            echo "Buffer not modified, not sending update to draftin.com"
+            return
+        endif
+
         let l:creating = 0
         let l:curl_method = "PUT"
     endif
 
-    let l:content = b:json_dump_string(getline(1, line("$")))
-    let l:json = '{"content": '.l:content.', "name": "'.l:name.'"}'
+    " Escaping the content is rather messy, since 
+    " 1) some characters must be escaped to be correct JSON
+    " 2) the shell used for the system call to curl have different
+    "    requirements
+    " The current solution is to first do the JSON escaping and then get rid
+    " of the quotes it adds since that interferes with the next step.
+    " The pure, JSON escaped content is then shellescaped, and then the quotes
+    " it add removed since that interferes with JSON formatting again. 
+    " The last step is to put together the complete, properly escaped JSON
+    " with content.
+    let l:content = b:json_dump_string(getline(1, line("$")))[1:-2]
+    let l:content = shellescape(l:content)[1:-2]
+    let l:json = '{"content": "'. l:content.'", "name": "'.l:name.'"}'
 
     let l:curlCmd = "curl -s -u ". g:draftin_vim_auth . " -X " . curl_method
     let l:curlCmd .= " -H 'Content-Type: application/json'"
@@ -117,6 +134,8 @@ function! s:Draft(...)
     else
         echo "Document " . l:name . " updated, see https://draftin.com/documents/" . b:draftin_id
     endif
+
+    let b:modified = 0
 endfunction
 
 function! s:AutoDraft()
@@ -130,6 +149,7 @@ function! s:AutoDraft()
 endfunction
 
 function! s:AddDraftinSaveHandlers()
+    autocmd BufWritePre <buffer> let b:modified = &l:modified 
     autocmd BufWritePost <buffer> call s:AutoDraft()
 endfunction
 
@@ -144,6 +164,7 @@ function! s:SetupDraftinBuffer()
     call s:AddDraftinSaveHandlers()    
     let b:autodraftin = 0
     let b:notautodraftin = 0
+    let b:modified = 0
 endfunction
 
 augroup draftin
