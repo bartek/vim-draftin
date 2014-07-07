@@ -44,3 +44,4 @@ Usage
   to the command will be used as the name of the document. If there are no
   arguments, the name will be set to the first line of the content, or if that
   is missing too, the file name.
+* `:DraftRename <New name>` will rename an existing Draft document to 'New name'
