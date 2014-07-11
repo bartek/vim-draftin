@@ -7,7 +7,24 @@ let g:draftin_enabled = 1
 let s:draftin_doc_create_endpoint = "https://draftin.com/api/v1/documents.json"
 let s:draftin_doc_update_endpoint = "https://draftin.com/api/v1/documents/"
 
-command Draft call <SID>Draft()
+command -nargs=? Draft call <SID>Draft(<f-args>)
+command -nargs=1 DraftRename call <SID>DraftRename(<f-args>)
+
+function! s:CheckDraftRunnable()
+    if !exists("g:draftin_vim_auth")
+        echo "Ensure draftin_auth is set in .vimrc as username:password or better,"
+        echo "put it in a different file that is source by your vimrc"
+        return 0
+    endif
+
+    if !g:draftin_enabled
+        echo "vim-draftin has been disabled, look for ''g:draftin_enabled'' in your"
+        echo "vim config files."
+        return 0
+    endif
+
+    return s:CheckDependencies()
+endfunction
 
 function! s:CheckDependencies()
     if !exists("g:loaded_jsoncodecs")
@@ -16,9 +33,15 @@ function! s:CheckDependencies()
         return 0
     endif
 
-    if !exists('g:loaded_parsejson') 
+    if !exists("g:loaded_parsejson") 
         echo "vim-draftin depends on ParseJSON for reply parsing"
         echo "https://github.com/vim-scripts/ParseJSON"
+        return 0
+    endif
+
+    if !executable("curl")
+        echo "vim-draftin depends on curl to send messages to draftin.com, but"
+        echo "it appear to not be installed."
         return 0
     endif
 
@@ -27,6 +50,10 @@ endfunction
 
 function! s:MetadataFilename()
     return expand('%:h') . "/." . expand('%:t') . ".meta"
+endfunction
+
+function! s:DocUpdateEndpoint()
+    return s:draftin_doc_update_endpoint . b:draftin_id . ".json"
 endfunction
 
 function! s:ReadDocMetadata()
@@ -46,19 +73,39 @@ function! s:WriteDocMetadata(metadata)
     call writefile(l:mdlines, l:mdfilename)
 endfunction
 
+function! s:SendMessage(method, jsondata, endpoint)
+    let l:curlCmd = "curl -s -u ". g:draftin_vim_auth . " -X " . a:method
+    let l:curlCmd .= " -H 'Content-Type: application/json'"
+    let l:json = '{' " "content": "'. l:content.'", "name": "'.l:name.'"}'
+    for key in keys(a:jsondata)
+        let l:json .= '"' . key . '" : "' . a:jsondata[key] . '" ,'
+    endfor
+    let l:json = l:json[:-2] . '}'
+    let l:curlCmd .= " -d '" . l:json . "' "
+    let l:curlCmd .= a:endpoint
+
+    return system(l:curlCmd)
+endfunction
+
+" Rename the Draft document. Requires that the buffer is already recognized as
+" a Draft document.
+function! s:DraftRename(name)
+    if !exists("b:draftin_id")
+        echo "Buffer not recognized as a Draft document."
+        return
+    endif
+
+    if !s:CheckDraftRunnable()
+        return
+    endif
+
+    call s:SendMessage('PUT', { 'name' : a:name }, s:DocUpdateEndpoint())
+    echo "Document renamed to " . a:name . ", see https://draftin.com/documents/" . b:draftin_id
+endfunction
+
 " Upload the current buffer to draftin.com
-function! s:Draft()
-    if !exists("g:draftin_vim_auth")
-        echo "Ensure draftin_auth is set in .vimrc as username:password or better,"
-        echo "put it in a different file that is source by your vimrc"
-        return
-    endif
-
-    if !g:draftin_enabled
-        return
-    endif
-
-    if !s:CheckDependencies()
+function! s:Draft(...)
+    if !s:CheckDraftRunnable()
         return
     endif
 
@@ -68,38 +115,55 @@ function! s:Draft()
 
     if !b:autodraftin
         let b:notautodraftin = 1
+        let b:modified = &l:modified
         " Make sure the file is saved
         update
     endif
 
-    let l:curl_method = "POST"
-
-    let l:name = getline(1)
-    " Use filename if there's no first line.
-    if strlen(l:name) < 1
-        let l:name = shellescape(expand('%:t')) 
+    let l:name = ""
+    if len(a:000) == 1
+        let l:name = a:1
+    else
+        let l:name = getline(1)
+        " Use filename if there's no first line.
+        if strlen(l:name) < 1
+            let l:name = shellescape(expand('%:t')) 
+        endif
     endif
 
     call s:ReadDocMetadata()
     let l:creating = 1
     if exists("b:draftin_id")
+        if !b:modified
+            echo "Buffer not modified, not sending update to draftin.com"
+            return
+        endif
+
         let l:creating = 0
+    endif
+
+    " Escaping the content is rather messy, since 
+    " 1) some characters must be escaped to be correct JSON
+    " 2) the shell used for the system call to curl have different
+    "    requirements
+    " The current solution is to first do the JSON escaping and then get rid
+    " of the quotes it adds since that interferes with the next step.
+    " The pure, JSON escaped content is then shellescaped, and then the quotes
+    " it add removed since that interferes with JSON formatting again. 
+    " The last step is to put together the complete, properly escaped JSON
+    " with content.
+    let l:content = b:json_dump_string(getline(1, line("$")))[1:-2]
+    let l:content = shellescape(l:content)[1:-2]
+    let l:jsondata = { 'content' : l:content, 'name' : l:name }
+
+    let l:endpoint = s:draftin_doc_create_endpoint
+    let l:curl_method = "POST"
+    if !l:creating
+        let l:endpoint = s:DocUpdateEndpoint() 
         let l:curl_method = "PUT"
     endif
 
-    let l:content = b:json_dump_string(getline(1, line("$")))
-    let l:json = '{"content": '.l:content.', "name": "'.l:name.'"}'
-
-    let l:curlCmd = "curl -s -u ". g:draftin_vim_auth . " -X " . curl_method
-    let l:curlCmd .= " -H 'Content-Type: application/json'"
-    let l:curlCmd .= " -d '".l:json."' "
-    if l:creating
-        let l:curlCmd .= s:draftin_doc_create_endpoint
-    else
-        let l:curlCmd .= s:draftin_doc_update_endpoint . b:draftin_id . ".json"
-    endif
-
-    let l:rawres = system(l:curlCmd)
+    let l:rawres = s:SendMessage(curl_method, l:jsondata, l:endpoint)
     if l:creating
         let l:res = ParseJSON(l:rawres)
         call s:WriteDocMetadata(l:res)
@@ -112,6 +176,8 @@ function! s:Draft()
     else
         echo "Document " . l:name . " updated, see https://draftin.com/documents/" . b:draftin_id
     endif
+
+    let b:modified = 0
 endfunction
 
 function! s:AutoDraft()
@@ -125,6 +191,7 @@ function! s:AutoDraft()
 endfunction
 
 function! s:AddDraftinSaveHandlers()
+    autocmd BufWritePre <buffer> let b:modified = &l:modified 
     autocmd BufWritePost <buffer> call s:AutoDraft()
 endfunction
 
@@ -139,6 +206,7 @@ function! s:SetupDraftinBuffer()
     call s:AddDraftinSaveHandlers()    
     let b:autodraftin = 0
     let b:notautodraftin = 0
+    let b:modified = 0
 endfunction
 
 augroup draftin

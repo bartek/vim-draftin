@@ -15,6 +15,9 @@ may have to be escaped in JSON.
 [vim-scripts/jsoncodecs.vim](https://github.com/vim-scripts/jsoncodecs.vim)
 handles this.
 
+vim-draftin uses the program curl to send messages to draftin.com. How to install it
+will depend on your system.
+
 Installation
 ----
 
@@ -37,4 +40,8 @@ POST new documents. Within .vimrc (or in a file sourced from .vimrc):
 Usage
 ----
 
-* `:Draft` will upload the document to Draft, echo'ing back the url.
+* `:Draft` will upload the document to Draft, echo'ing back the url. Arguments
+  to the command will be used as the name of the document. If there are no
+  arguments, the name will be set to the first line of the content, or if that
+  is missing too, the file name.
+* `:DraftRename <New name>` will rename an existing Draft document to 'New name'
