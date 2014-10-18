@@ -56,6 +56,16 @@ function! s:DocUpdateEndpoint()
     return s:draftin_doc_update_endpoint . b:draftin_id . ".json"
 endfunction
 
+function! s:DocGetEndpoint()
+    return s:draftin_doc_update_endpoint . b:draftin_id . ".json"
+endfunction
+
+function! s:UpdateDocMetadata()
+    let l:rawres = s:GetFromDraft(s:DocGetEndpoint())
+    let l:res = ParseJSON(l:rawres)
+    call s:WriteDocMetadata(l:res)
+endfunction
+
 function! s:ReadDocMetadata()
     let l:mdfilename = s:MetadataFilename() 
     if (filereadable(l:mdfilename))
@@ -66,14 +76,23 @@ endfunction
 function! s:WriteDocMetadata(metadata)
     let l:mdfilename = s:MetadataFilename() 
     let l:mdlines = []
-    let l:relevantKeys = ['id']
+    let l:relevantKeys = ['id', 'name']
     for key in relevantKeys 
         call add(l:mdlines, "let b:draftin_" . key . " = '" . a:metadata[key] . "'")
     endfor
     call writefile(l:mdlines, l:mdfilename)
+    " Read it back so the stored variables can be used
+    call s:ReadDocMetadata()
+endfunction
+
+function! s:GetFromDraft(endpoint)
+    " -s silence everything except the raw reply
+    let l:curlCmd = "curl -s -u ". g:draftin_vim_auth . " " . a:endpoint
+    return system(l:curlCmd)
 endfunction
 
 function! s:SendMessage(method, jsondata, endpoint)
+    " -s silence everything except the raw reply
     let l:curlCmd = "curl -s -u ". g:draftin_vim_auth . " -X " . a:method
     let l:curlCmd .= " -H 'Content-Type: application/json'"
     let l:json = '{' " "content": "'. l:content.'", "name": "'.l:name.'"}'
