@@ -119,7 +119,9 @@ function! s:DraftRename(name)
     endif
 
     call s:SendMessage('PUT', { 'name' : a:name }, s:DocUpdateEndpoint())
-    echo "Document renamed to " . a:name . ", see https://draftin.com/documents/" . b:draftin_id
+    call s:UpdateDocMetadata()
+
+    echo "Document renamed to " . b:draftin_name . ", see https://draftin.com/documents/" . b:draftin_id
 endfunction
 
 " Upload the current buffer to draftin.com
