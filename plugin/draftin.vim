@@ -145,10 +145,14 @@ function! s:Draft(...)
     if len(a:000) > 0
         let l:name = join(a:000, ' ')
     else
-        let l:name = getline(1)
-        " Use filename if there's no first line.
-        if strlen(l:name) < 1
-            let l:name = shellescape(expand('%:t')) 
+        if exists("b:draftin_name")
+            let l:name = b:draftin_name
+        else
+            let l:name = getline(1)
+            " Use filename if there's no first line.
+            if strlen(l:name) < 1
+                let l:name = shellescape(expand('%:t')) 
+            endif
         endif
     endif
 
@@ -161,7 +165,6 @@ function! s:Draft(...)
         endif
 
         let l:creating = 0
-        let l:name = b:draftin_name
     endif
 
     " Escaping the content is rather messy, since 
