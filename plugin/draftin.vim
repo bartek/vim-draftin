@@ -142,8 +142,8 @@ function! s:Draft(...)
     endif
 
     let l:name = ""
-    if len(a:000) == 1
-        let l:name = a:1
+    if len(a:000) > 0
+        let l:name = join(a:000, ' ')
     else
         let l:name = getline(1)
         " Use filename if there's no first line.
@@ -161,6 +161,7 @@ function! s:Draft(...)
         endif
 
         let l:creating = 0
+        let l:name = b:draftin_name
     endif
 
     " Escaping the content is rather messy, since 
@@ -186,10 +187,10 @@ function! s:Draft(...)
 
     let l:rawres = s:SendMessage(curl_method, l:jsondata, l:endpoint)
     if l:creating
+        " When creating/updating the content, we get the metadata in the
+        " reply, so we can use that directly instead of requesting it
         let l:res = ParseJSON(l:rawres)
         call s:WriteDocMetadata(l:res)
-        " Read it back so the stored variables can be used
-        call s:ReadDocMetadata()
     endif
 
     if l:creating
