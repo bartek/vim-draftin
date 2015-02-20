@@ -21,13 +21,20 @@ will depend on your system.
 Installation
 ----
 
-I highly recommend [pathogen.vim](https://github.com/tpope/vim-pathogen), which
-makes installation very simple:
+##### [Pathogen](https://github.com/tpope/vim-pathogen)
+```bash
+git clone https://github.com/bartek/vim-draftin ~/.vim/bundle/vim-draftin
+```
 
-    cd ~/.vim/bundle
-    git clone git://github.com/bartek/vim-draftin.git
+##### [Vundle](https://github.com/gmarik/vundle)
+```
+Plugin 'bartek/vim-draftin'
+```
 
-Assuming you have pathogen setup, the plugin will automatically be installed.
+##### [NeoBundle](https://github.com/Shougo/neobundle.vim)
+```
+NeoBundle 'bartek/vim-draftin'
+```
 
 Configuration
 ----
