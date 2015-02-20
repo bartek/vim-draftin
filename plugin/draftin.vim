@@ -56,6 +56,16 @@ function! s:DocUpdateEndpoint()
     return s:draftin_doc_update_endpoint . b:draftin_id . ".json"
 endfunction
 
+function! s:DocGetEndpoint()
+    return s:draftin_doc_update_endpoint . b:draftin_id . ".json"
+endfunction
+
+function! s:UpdateDocMetadata()
+    let l:rawres = s:GetFromDraft(s:DocGetEndpoint())
+    let l:res = ParseJSON(l:rawres)
+    call s:WriteDocMetadata(l:res)
+endfunction
+
 function! s:ReadDocMetadata()
     let l:mdfilename = s:MetadataFilename() 
     if (filereadable(l:mdfilename))
@@ -66,14 +76,23 @@ endfunction
 function! s:WriteDocMetadata(metadata)
     let l:mdfilename = s:MetadataFilename() 
     let l:mdlines = []
-    let l:relevantKeys = ['id']
+    let l:relevantKeys = ['id', 'name']
     for key in relevantKeys 
         call add(l:mdlines, "let b:draftin_" . key . " = '" . a:metadata[key] . "'")
     endfor
     call writefile(l:mdlines, l:mdfilename)
+    " Read it back so the stored variables can be used
+    call s:ReadDocMetadata()
+endfunction
+
+function! s:GetFromDraft(endpoint)
+    " -s silence everything except the raw reply
+    let l:curlCmd = "curl -s -u ". g:draftin_vim_auth . " " . a:endpoint
+    return system(l:curlCmd)
 endfunction
 
 function! s:SendMessage(method, jsondata, endpoint)
+    " -s silence everything except the raw reply
     let l:curlCmd = "curl -s -u ". g:draftin_vim_auth . " -X " . a:method
     let l:curlCmd .= " -H 'Content-Type: application/json'"
     let l:json = '{' " "content": "'. l:content.'", "name": "'.l:name.'"}'
@@ -100,7 +119,9 @@ function! s:DraftRename(name)
     endif
 
     call s:SendMessage('PUT', { 'name' : a:name }, s:DocUpdateEndpoint())
-    echo "Document renamed to " . a:name . ", see https://draftin.com/documents/" . b:draftin_id
+    call s:UpdateDocMetadata()
+
+    echo "Document renamed to " . b:draftin_name . ", see https://draftin.com/documents/" . b:draftin_id
 endfunction
 
 " Upload the current buffer to draftin.com
@@ -121,13 +142,17 @@ function! s:Draft(...)
     endif
 
     let l:name = ""
-    if len(a:000) == 1
-        let l:name = a:1
+    if len(a:000) > 0
+        let l:name = join(a:000, ' ')
     else
-        let l:name = getline(1)
-        " Use filename if there's no first line.
-        if strlen(l:name) < 1
-            let l:name = shellescape(expand('%:t')) 
+        if exists("b:draftin_name")
+            let l:name = b:draftin_name
+        else
+            let l:name = getline(1)
+            " Use filename if there's no first line.
+            if strlen(l:name) < 1
+                let l:name = shellescape(expand('%:t')) 
+            endif
         endif
     endif
 
@@ -165,10 +190,10 @@ function! s:Draft(...)
 
     let l:rawres = s:SendMessage(curl_method, l:jsondata, l:endpoint)
     if l:creating
+        " When creating/updating the content, we get the metadata in the
+        " reply, so we can use that directly instead of requesting it
         let l:res = ParseJSON(l:rawres)
         call s:WriteDocMetadata(l:res)
-        " Read it back so the stored variables can be used
-        call s:ReadDocMetadata()
     endif
 
     if l:creating
